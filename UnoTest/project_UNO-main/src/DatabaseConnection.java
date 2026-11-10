@@ -1,20 +1,26 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.ResultSet;
-import java.sql.PreparedStatement;
-
 
 public class DatabaseConnection {
 
+    // Matches the actual location of database.db in your Eclipse project
+    private static final String URL = "jdbc:sqlite:project_UNO-main/src/database.db";
+
     public static Connection connect() throws SQLException {
-        return DriverManager.getConnection(
-            "jdbc:sqlite:src/database/database.db"
-        );
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            System.err.println("SQLite JDBC Driver not found on classpath!");
+            e.printStackTrace();
+        }
+        return DriverManager.getConnection(URL);
     }
 
-	//Log in valifation mechanic
+    // Login validation mechanic
     public static int validateUser(String username, String password) {
         String query = "SELECT id FROM users WHERE username = ? AND password = ?";
         
@@ -35,8 +41,8 @@ public class DatabaseConnection {
         }
         return -1; // Login failed
     }
-	
-	/**
+    
+    /**
      * Inserts a new user into the database and returns the generated UID.
      * Returns -1 if the registration fails (e.g., username already exists).
      */
@@ -65,49 +71,40 @@ public class DatabaseConnection {
     }
 
     public static void main(String[] args) {
+        // Drop the old users table if it exists
+        String dropUsersTable = "DROP TABLE IF EXISTS users;";
+
+        String createUsersTable = """
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                email TEXT
+            );
+            """;
+
         String createTasksTable = """
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
                 description TEXT,
                 completed INTEGER NOT NULL DEFAULT 0
-            )
-            """;
-
-		String createUsersTable = """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL
-            )
-            """;
-//Made a quick change as for the table to made of strings to compare in the log in screen! Alex
-
-        String sql = """
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                description TEXT,
-                completed INTEGER NOT NULL DEFAULT 0
-            )
+            );
             """;
 
         try (Connection conn = connect();
              Statement stmt = conn.createStatement()) {
 
-			stmt.executeUpdate(createTasksTable);
+            // Drop and recreate
+            stmt.executeUpdate(dropUsersTable);
             stmt.executeUpdate(createUsersTable);
+            stmt.executeUpdate(createTasksTable);
 
-            stmt.executeUpdate(sql);
-            System.out.println("Database connected successfully!");
+            System.out.println("Users table recreated successfully with username, password, and email!");
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        
     }
 }
-
 	
-
-
